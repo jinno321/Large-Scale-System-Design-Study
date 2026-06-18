@@ -29,7 +29,7 @@ https://claude.ai/public/artifacts/67113a5b-0db1-46ca-9fb3-7e73a019fa90
 
 - 해시 공간의 양쪽을 구부려 접어서 링 형태로 만든 것!
 
-!image.png
+https://creative-zydeco-71d.notion.site/image/attachment%3A2b50a959-9685-4adf-97ef-47f46f6b3f80%3Aimage.png?table=block&id=3752b88d-8c78-8038-a06c-e04a9b560fef&spaceId=0d60a639-8c23-4927-ac86-f35c48b8a16b&width=1060&userId=&cache=v2&imgBuildSrc=requestProxiedImageUrl
 
 #### 서버 조회
 
