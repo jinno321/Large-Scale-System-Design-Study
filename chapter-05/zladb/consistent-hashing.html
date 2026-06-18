@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>안정 해시 (Consistent Hashing)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Serif:ital@0;1&family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── DARK THEME (default) ── */
+:root,[data-theme="dark"]{
+  --bg:#0a0a0f;--bg2:#111118;--bg3:#18181f;
+  --surface:#1e1e28;--surface2:#252530;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a72;
+  --accent:#7c6bff;--accent2:#5b4ee0;--accent-glow:rgba(124,107,255,0.18);
+  --teal:#1dbe8a;--coral:#ff6b52;--amber:#f5a623;--pink:#e05b9c;
+  --header-bg:rgba(10,10,15,0.88);
+  --ring-stroke:rgba(255,255,255,0.10);
+  --ring-tick:rgba(255,255,255,0.18);
+  --ring-label:rgba(255,255,255,0.22);
+  --key-label:rgba(255,255,255,0.38);
+  --srv-stroke:#0a0a0f;
+  --fade-stroke:rgba(255,255,255,0.15);
+  --theme-icon:"☀️";
+}
+
+/* ── LIGHT THEME ── */
+[data-theme="light"]{
+  --bg:#f5f4f0;--bg2:#eeede8;--bg3:#e6e5e0;
+  --surface:#ffffff;--surface2:#f0efe9;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#1a1a24;--text2:#52526a;--text3:#9898b0;
+  --accent:#5b4ee0;--accent2:#3d32c0;--accent-glow:rgba(91,78,224,0.14);
+  --teal:#0d9b6e;--coral:#d94f38;--amber:#c97f10;--pink:#b8418a;
+  --header-bg:rgba(245,244,240,0.90);
+  --ring-stroke:rgba(0,0,0,0.12);
+  --ring-tick:rgba(0,0,0,0.20);
+  --ring-label:rgba(0,0,0,0.25);
+  --key-label:rgba(0,0,0,0.42);
+  --srv-stroke:#f5f4f0;
+  --fade-stroke:rgba(0,0,0,0.12);
+  --theme-icon:"🌙";
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Pretendard',-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;line-height:1.6;overflow-x:hidden;
+  transition:background .25s,color .25s;
+}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:var(--header-bg);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  transition:background .25s,border-color .25s;
+}
+.logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);letter-spacing:.05em}
+.header-right{display:flex;align-items:center;gap:4px}
+nav{display:flex;gap:4px}
+nav a{
+  font-size:12px;color:var(--text3);text-decoration:none;
+  padding:5px 12px;border-radius:8px;
+  transition:all .15s;font-family:'DM Mono',monospace;
+}
+nav a:hover{color:var(--text);background:var(--surface)}
+
+/* ── THEME TOGGLE ── */
+.theme-toggle{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 13px;border-radius:100px;
+  font-size:12px;font-family:'DM Mono',monospace;
+  cursor:pointer;border:1px solid var(--border2);
+  background:var(--surface);color:var(--text2);
+  transition:all .15s;margin-left:8px;white-space:nowrap;
+}
+.theme-toggle:hover{color:var(--text);border-color:var(--accent);background:var(--surface2)}
+.toggle-track{
+  width:30px;height:17px;border-radius:9px;
+  background:var(--surface2);border:1px solid var(--border2);
+  position:relative;transition:background .2s;flex-shrink:0;
+}
+[data-theme="light"] .toggle-track{background:var(--accent)}
+.toggle-knob{
+  position:absolute;top:2px;left:2px;
+  width:11px;height:11px;border-radius:50%;
+  background:var(--text3);transition:transform .2s,background .2s;
+}
+[data-theme="light"] .toggle-knob{transform:translateX(13px);background:#fff}
+
+/* ── HERO ── */
+.hero{padding:80px 2rem 60px;max-width:860px;margin:0 auto}
+.hero-tag{
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);
+  letter-spacing:.12em;text-transform:uppercase;
+  margin-bottom:20px;display:flex;align-items:center;gap:8px;
+}
+.hero-tag::before{content:'';display:inline-block;width:24px;height:1px;background:var(--accent)}
+.hero h1{
+  font-family:'Instrument Serif',serif;
+  font-size:clamp(2.4rem,5vw,3.6rem);font-weight:400;
+  line-height:1.15;color:var(--text);margin-bottom:20px;
+}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero p{font-size:15px;color:var(--text2);max-width:560px;line-height:1.75}
+
+/* ── SECTION ── */
+.section{max-width:900px;margin:0 auto;padding:0 2rem 80px}
+.section-header{
+  display:flex;align-items:baseline;gap:16px;
+  margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--border);
+}
+.section-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.section-title{font-family:'Instrument Serif',serif;font-size:1.5rem;font-weight:400;color:var(--text)}
+.section-title em{font-style:italic;color:var(--accent)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:28px}
+.mini-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;transition:background .25s,border-color .25s}
+.mini-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px}
+.mini-val{font-size:22px;font-weight:500;color:var(--text)}
+.mini-sub{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;gap:4px;margin-bottom:24px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:4px;width:fit-content;flex-wrap:wrap;
+  transition:background .25s;
+}
+.tab{
+  padding:7px 16px;border-radius:6px;font-size:12px;
+  font-family:'DM Mono',monospace;color:var(--text3);
+  cursor:pointer;border:none;background:transparent;transition:all .15s;white-space:nowrap;
+}
+.tab.active{background:var(--surface2);color:var(--accent);border:1px solid var(--border2)}
+.tab:hover:not(.active){color:var(--text2)}
+
+/* ── RING LAYOUT ── */
+.ring-layout{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start}
+@media(max-width:700px){.ring-layout{grid-template-columns:1fr}}
+svg{display:block}
+
+/* ── BADGE ── */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-family:'DM Mono',monospace;
+  padding:3px 9px;border-radius:100px;font-weight:500;
+}
+.badge-add{background:rgba(29,190,138,0.15);color:var(--teal);border:1px solid rgba(29,190,138,0.28)}
+.badge-remove{background:rgba(255,107,82,0.15);color:var(--coral);border:1px solid rgba(255,107,82,0.28)}
+.badge-move{background:rgba(245,166,35,0.15);color:var(--amber);border:1px solid rgba(245,166,35,0.28)}
+
+/* ── KEY TABLE ── */
+.key-table{width:100%;border-collapse:collapse;font-size:12px;font-family:'DM Mono',monospace}
+.key-table th{text-align:left;color:var(--text3);padding:6px 8px;border-bottom:1px solid var(--border);font-weight:400}
+.key-table td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.key-table tr:last-child td{border-bottom:none}
+.key-table tr.hl td{color:var(--amber);background:rgba(245,166,35,0.07)}
+.key-table tr.moved td{background:rgba(255,107,82,0.07)}
+.key-table tr[data-click]{cursor:pointer;transition:background .1s}
+.key-table tr[data-click]:hover td{background:var(--bg3)}
+
+/* ── LEGEND ── */
+.legend{display:flex;flex-direction:column;gap:8px}
+.legend-item{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace}
+.legend-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.legend-sq{width:11px;height:11px;border-radius:2px;flex-shrink:0;opacity:.3}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:8px;font-size:12px;
+  font-family:'DM Mono',monospace;cursor:pointer;
+  border:1px solid var(--border2);background:var(--surface);
+  color:var(--text2);transition:all .15s;
+}
+.btn:hover{color:var(--accent);border-color:var(--accent)}
+.btn.danger{border-color:rgba(255,107,82,0.3);color:var(--coral)}
+.btn.danger:hover{background:rgba(255,107,82,0.08)}
+.btn.success{border-color:rgba(29,190,138,0.3);color:var(--teal)}
+.btn.success:hover{background:rgba(29,190,138,0.08)}
+
+/* ── DESC BOX ── */
+.desc-box{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;font-size:12px;color:var(--text2);
+  line-height:1.7;font-family:'DM Mono',monospace;
+  transition:background .25s,border-color .25s;
+}
+.desc-box strong{color:var(--text);font-weight:500}
+.desc-box code{
+  background:var(--surface2);border-radius:4px;
+  padding:1px 5px;font-size:11px;color:var(--accent);
+}
+
+/* ── BAR ── */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.bar-name{font-size:12px;font-family:'DM Mono',monospace;width:24px;text-align:right;flex-shrink:0}
+.bar-bg{flex:1;height:16px;background:var(--bg3);border-radius:4px;overflow:hidden;border:1px solid var(--border);transition:background .25s}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.bar-pct{font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);width:34px;text-align:right;flex-shrink:0}
+
+/* ── SLIDER ── */
+.slider-wrap{display:flex;align-items:center;gap:14px}
+.slider-wrap label{font-size:12px;font-family:'DM Mono',monospace;color:var(--text3);white-space:nowrap}
+.slider-wrap input[type=range]{
+  flex:1;appearance:none;height:4px;
+  background:var(--surface2);border-radius:2px;outline:none;
+}
+.slider-wrap input[type=range]::-webkit-slider-thumb{
+  appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+  border:2px solid var(--bg);box-shadow:0 0 0 3px var(--accent-glow);
+}
+.slider-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--accent);min-width:48px}
+
+/* ── MISC ── */
+.divider{border:none;border-top:1px solid var(--border);margin:28px 0}
+.panel{display:none}
+.panel.active{display:block}
+footer{
+  border-top:1px solid var(--border);padding:28px 2rem;
+  text-align:center;font-family:'DM Mono',monospace;
+  font-size:11px;color:var(--text3);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeUp .5s ease both}
+.fade-in:nth-child(2){animation-delay:.07s}
+.fade-in:nth-child(3){animation-delay:.14s}
+.fade-in:nth-child(4){animation-delay:.21s}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">consistent-hashing.html</div>
+  <div class="header-right">
+    <nav>
+      <a href="#basics">기초</a>
+      <a href="#lookup">조회</a>
+      <a href="#server-ops">서버 변경</a>
+      <a href="#vnodes">가상 노드</a>
+    </nav>
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" aria-label="테마 전환">
+      <div class="toggle-track"><div class="toggle-knob"></div></div>
+      <span id="theme-label">라이트</span>
+    </button>
+  </div>
+</header>
+
+<div class="hero fade-in">
+  <div class="hero-tag">분산 시스템 · 로드밸런싱</div>
+  <h1>안정 해시<br><em>Consistent Hashing</em></h1>
+  <p>서버 추가·제거 시 최소한의 키만 재배치하는 분산 해시 기법. 해시 공간을 원형 링으로 표현해 서버와 키를 동일한 함수로 배치합니다.</p>
+</div>
+
+<!-- SECTION 1 -->
+<div class="section" id="basics">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">해시 링 · <em>Hash Ring</em></h2>
+  </div>
+  <div class="card-grid">
+    <div class="mini-card fade-in">
+      <div class="mini-label">해시 공간</div>
+      <div class="mini-val" style="font-size:15px;font-family:'DM Mono',monospace">0 ~ 2³²−1</div>
+      <div class="mini-sub">원형으로 이어 붙인 정수 공간</div>
+    </div>
+    <div class="mini-card fade-in">
+      <div class="mini-label">서버 위치</div>
+      <div class="mini-val" style="font-size:15px;font-family:'DM Mono',monospace">hash(IP)</div>
+      <div class="mini-sub">서버명·IP를 해시해 링에 배치</div>
+    </div>
+    <div class="mini-card fade-in">
+      <div class="mini-label">키 담당 서버</div>
+      <div class="mini-val" style="font-size:15px;font-family:'DM Mono',monospace">시계 방향↻</div>
+      <div class="mini-sub">키에서 시계 방향 첫 번째 서버</div>
+    </div>
+  </div>
+  <div class="ring-layout">
+    <svg id="svg-basics" viewBox="0 0 340 340" width="340" height="340"></svg>
+    <div>
+      <div class="desc-box" style="margin-bottom:16px">
+        SHA-1 등 해시 함수의 출력 공간(0~2³²-1)을 <strong>원형 링</strong>으로 이어 붙입니다.<br><br>
+        서버와 키 모두 <strong>동일한 해시 함수</strong>로 링 위 좌표를 결정합니다.<br><br>
+        키의 위치에서 <strong>시계 방향으로 처음 만나는 서버</strong>가 해당 키를 담당합니다.
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c6bff"></div>서버 A</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1dbe8a"></div>서버 B</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff6b52"></div>서버 C</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e05b9c"></div>서버 D</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623;border-radius:3px"></div>해시 키</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#7c6bff"></div>A 담당 구간</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#1dbe8a"></div>B 담당 구간</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#ff6b52"></div>C 담당 구간</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#e05b9c"></div>D 담당 구간</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="section" id="lookup">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">서버 조회 · <em>Key Lookup</em></h2>
+  </div>
+  <div class="desc-box" style="margin-bottom:20px">
+    테이블 행 또는 <strong>링 위의 키(주황 사각형)를 클릭</strong>하면 시계 방향 탐색 경로와 담당 서버를 확인할 수 있습니다.
+  </div>
+  <div class="ring-layout">
+    <svg id="svg-lookup" viewBox="0 0 340 340" width="340" height="340"></svg>
+    <div>
+      <table class="key-table" id="lookup-table" style="margin-bottom:16px"></table>
+      <div class="card" id="lookup-detail" style="display:none;font-family:'DM Mono',monospace;font-size:12px;line-height:1.8"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="section" id="server-ops">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">서버 추가 · 제거 · <em>Scale In/Out</em></h2>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchOp('add')">서버 추가 (E)</button>
+    <button class="tab" onclick="switchOp('remove')">서버 제거 (C)</button>
+  </div>
+  <div id="panel-add" class="panel active">
+    <div class="desc-box" style="margin-bottom:20px">
+      서버 <strong style="color:var(--teal)">E</strong>를 추가할 때, 재배치되는 키는 <span class="badge badge-move">재배치</span> E와 이전 서버 사이의 키만입니다. 나머지는 변동 없습니다.
+    </div>
+    <div style="margin-bottom:16px">
+      <button class="btn success" id="btn-add" onclick="toggleAdd()">서버 E 추가하기</button>
+    </div>
+    <div class="ring-layout">
+      <svg id="svg-add" viewBox="0 0 340 340" width="340" height="340"></svg>
+      <div>
+        <table class="key-table" id="add-table" style="margin-bottom:12px"></table>
+        <div id="add-summary" class="desc-box"></div>
+      </div>
+    </div>
+  </div>
+  <div id="panel-remove" class="panel">
+    <div class="desc-box" style="margin-bottom:20px">
+      서버 <strong style="color:var(--coral)">C</strong>가 제거되면, <span class="badge badge-remove">영향</span> C가 담당하던 키만 다음 서버(D)로 이전됩니다.
+    </div>
+    <div style="margin-bottom:16px">
+      <button class="btn danger" id="btn-remove" onclick="toggleRemove()">서버 C 제거하기</button>
+    </div>
+    <div class="ring-layout">
+      <svg id="svg-remove" viewBox="0 0 340 340" width="340" height="340"></svg>
+      <div>
+        <table class="key-table" id="remove-table" style="margin-bottom:12px"></table>
+        <div id="remove-summary" class="desc-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4 -->
+<div class="section" id="vnodes">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">가상 노드 · <em>Virtual Nodes</em></h2>
+  </div>
+  <div class="desc-box" style="margin-bottom:20px">
+    하나의 물리 서버를 링 위의 <strong>여러 위치</strong>에 등록합니다. <code>hash("server-A-vnode-0")</code>, <code>hash("server-A-vnode-1")</code>… 처럼 독립적으로 해시하여 배치합니다. 슬라이더를 올려보세요.
+  </div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="slider-wrap">
+      <label>서버당 가상 노드 수</label>
+      <input type="range" min="1" max="40" step="1" value="1" id="vn-slider" oninput="renderVnode(+this.value)">
+      <span class="slider-val" id="vn-val">1개</span>
+      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)">총 <span id="vn-total">3</span>개</span>
+    </div>
+  </div>
+  <div class="card-grid">
+    <div class="mini-card">
+      <div class="mini-label">최대 부하</div>
+      <div class="mini-val" id="vn-max">—</div>
+      <div class="mini-sub" id="vn-max-s"></div>
+    </div>
+    <div class="mini-card">
+      <div class="mini-label">최소 부하</div>
+      <div class="mini-val" id="vn-min">—</div>
+      <div class="mini-sub" id="vn-min-s"></div>
+    </div>
+    <div class="mini-card">
+      <div class="mini-label">편차 (max−min)</div>
+      <div class="mini-val" id="vn-diff">—</div>
+      <div class="mini-sub">낮을수록 균등</div>
+    </div>
+  </div>
+  <div class="ring-layout" style="margin-top:20px">
+    <svg id="svg-vn" viewBox="0 0 340 340" width="340" height="340"></svg>
+    <div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:10px">서버별 키 점유율</div>
+        <div id="vn-bars"></div>
+      </div>
+      <hr class="divider" style="margin:16px 0">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c6bff"></div>서버 A (실제 노드)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1dbe8a"></div>서버 B (실제 노드)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff6b52"></div>서버 C (실제 노드)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7c6bff;opacity:.4;outline:1.5px dashed #7c6bff;outline-offset:1px"></div>A 가상 노드</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1dbe8a;opacity:.4;outline:1.5px dashed #1dbe8a;outline-offset:1px"></div>B 가상 노드</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff6b52;opacity:.4;outline:1.5px dashed #ff6b52;outline-offset:1px"></div>C 가상 노드</div>
+      </div>
+      <div class="desc-box" id="vn-desc" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+<footer>consistent hashing · distributed systems · interactive visualization</footer>
+
+<script>
+/* ══════════════════════════════════════
+   THEME TOGGLE
+══════════════════════════════════════ */
+let isDark=true;
+function toggleTheme(){
+  isDark=!isDark;
+  document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
+  document.getElementById('theme-label').textContent=isDark?'라이트':'다크';
+  redrawAll();
+}
+
+function themeVal(darkVal,lightVal){return isDark?darkVal:lightVal}
+
+/* ══════════════════════════════════════
+   SVG CONSTANTS & HELPERS
+══════════════════════════════════════ */
+const CX=170,CY=170,R=118,NS='http://www.w3.org/2000/svg';
+
+const SRV_BASE=[
+  {n:'A',col:'#7c6bff',fill:'rgba(124,107,255,0.28)'},
+  {n:'B',col:'#1dbe8a',fill:'rgba(29,190,138,0.28)'},
+  {n:'C',col:'#ff6b52',fill:'rgba(255,107,82,0.28)'},
+  {n:'D',col:'#e05b9c',fill:'rgba(224,91,156,0.28)'},
+];
+const SRV_ANGLES={A:30,B:120,C:210,D:310};
+const SRV_E={n:'E',col:'#f5a623',fill:'rgba(245,166,35,0.28)',angle:165};
+const KEYS=[
+  {n:'k1',angle:60},{n:'k2',angle:95},{n:'k3',angle:150},
+  {n:'k4',angle:250},{n:'k5',angle:340},
+];
+const KEY_COL='#f5a623';
+
+function axy(a,r){
+  const rad=(a-90)*Math.PI/180;
+  return{x:CX+r*Math.cos(rad),y:CY+r*Math.sin(rad)};
+}
+function el(tag,attrs={}){
+  const e=document.createElementNS(NS,tag);
+  for(const[k,v]of Object.entries(attrs)) e.setAttribute(k,v);
+  return e;
+}
+function txt(content,attrs={}){
+  const t=document.createElementNS(NS,'text');
+  for(const[k,v]of Object.entries(attrs)) t.setAttribute(k,v);
+  t.textContent=content;
+  return t;
+}
+function clearSvg(id){
+  const svg=document.getElementById(id);
+  svg.innerHTML='';
+  const defs=document.createElementNS(NS,'defs');
+  defs.innerHTML=`<marker id="arr-${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#7c6bff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>`;
+  svg.appendChild(defs);
+  return svg;
+}
+function assignServer(angle,servers){
+  const sorted=[...servers].sort((a,b)=>a.angle-b.angle);
+  for(const s of sorted) if(s.angle>=angle) return s;
+  return sorted[0];
+}
+
+/* ── draw ring base ── */
+function drawBase(svg){
+  const ringStroke=themeVal('rgba(255,255,255,0.10)','rgba(0,0,0,0.12)');
+  const tickStroke=themeVal('rgba(255,255,255,0.18)','rgba(0,0,0,0.20)');
+  const labelFill=themeVal('rgba(255,255,255,0.22)','rgba(0,0,0,0.28)');
+  const c=el('circle',{cx:CX,cy:CY,r:R,fill:'none',stroke:ringStroke,'stroke-width':'1.5'});
+  svg.appendChild(c);
+  const tp=axy(0,R);
+  const tl=el('line',{x1:tp.x,y1:tp.y-5,x2:tp.x,y2:tp.y+5,stroke:tickStroke,'stroke-width':'1'});
+  svg.appendChild(tl);
+  const tt=txt('0',{x:tp.x,y:tp.y-10,'text-anchor':'middle','font-size':'9',fill:labelFill,'font-family':'DM Mono,monospace'});
+  svg.appendChild(tt);
+}
+
+/* ── draw sector arcs ── */
+function drawSectors(svg,nodes){
+  const sorted=[...nodes].sort((a,b)=>a.angle-b.angle);
+  for(let i=0;i<sorted.length;i++){
+    const nd=sorted[i];
+    const prev=sorted[(i-1+sorted.length)%sorted.length];
+    let sa=prev.angle,ea=nd.angle;
+    if(ea<=sa)ea+=360;
+    const large=ea-sa>180?1:0;
+    const s=axy(sa,R),e=axy(ea,R);
+    const path=el('path',{
+      d:`M${CX},${CY}L${s.x},${s.y}A${R},${R} 0 ${large},1 ${e.x},${e.y}Z`,
+      fill:nd.fill||'rgba(128,128,128,0.15)',stroke:'none'
+    });
+    svg.appendChild(path);
+  }
+}
+
+/* ── draw server dot ── */
+function drawServer(svg,s,opts={}){
+  const p=axy(s.angle,R);
+  const r=9;
+  const opacity=opts.faded?0.28:1;
+  const srvStroke=themeVal('#0a0a0f','#f5f4f0');
+  const fadedFill=themeVal('rgba(255,255,255,0.18)','rgba(0,0,0,0.18)');
+  const c=el('circle',{cx:p.x,cy:p.y,r,fill:s.col,stroke:srvStroke,'stroke-width':'2',opacity});
+  svg.appendChild(c);
+  if(!opts.noLabel){
+    const lp=axy(s.angle,R+22);
+    const labelFill=opts.faded?fadedFill:s.col;
+    const t=txt(`S${s.n}`,{
+      x:lp.x,y:lp.y+4,'text-anchor':'middle',
+      'font-size':'11','font-weight':'500',
+      fill:labelFill,'font-family':'DM Mono,monospace'
+    });
+    svg.appendChild(t);
+  }
+}
+
+/* ── draw key dot ── */
+function drawKey(svg,k,opts={}){
+  const p=axy(k.angle,R);
+  const keyLabelFill=themeVal('rgba(255,255,255,0.38)','rgba(0,0,0,0.42)');
+  const srvStroke=themeVal('#0a0a0f','#f5f4f0');
+  const g=el('g',{});
+  if(opts.onClick){
+    g.setAttribute('style','cursor:pointer');
+    g.addEventListener('click',()=>opts.onClick(k.n));
+  }
+  if(opts.onClick){
+    const hit=el('circle',{cx:p.x,cy:p.y,r:16,fill:'transparent',stroke:'none'});
+    g.appendChild(hit);
+  }
+  const rect=el('rect',{
+    x:p.x-5,y:p.y-5,width:10,height:10,rx:'2',
+    fill:opts.highlighted?'#ffbe4d':KEY_COL,
+    stroke:opts.highlighted?'#ffbe4d':srvStroke,'stroke-width':'1.5',
+    opacity:opts.faded?0.3:1
+  });
+  g.appendChild(rect);
+  const lp=axy(k.angle,R+20);
+  const t=txt(k.n,{
+    x:lp.x,y:lp.y+4,'text-anchor':'middle',
+    'font-size':'10',
+    fill:opts.highlighted?'#ffbe4d':keyLabelFill,
+    'font-family':'DM Mono,monospace','font-weight':opts.highlighted?'500':'400'
+  });
+  g.appendChild(t);
+  svg.appendChild(g);
+}
+
+/* ── draw lookup arc ── */
+function drawLookupArc(svg,keyAngle,serverAngle,svgId){
+  let sa=keyAngle,ea=serverAngle;
+  if(ea<=sa)ea+=360;
+  const large=ea-sa>180?1:0;
+  const s=axy(sa,R),e=axy(ea,R);
+  const path=el('path',{
+    d:`M${s.x},${s.y}A${R},${R} 0 ${large},1 ${e.x},${e.y}`,
+    fill:'none',stroke:'#7c6bff','stroke-width':'2.5',
+    'stroke-dasharray':'5 3',opacity:'0.75',
+    'marker-end':`url(#arr-${svgId})`
+  });
+  svg.appendChild(path);
+}
+
+/* ══════════════════════════════════════
+   LOOKUP detail text helper (theme-aware)
+══════════════════════════════════════ */
+function lookupDetailMuted(text){
+  return `<span style="color:${themeVal('rgba(255,255,255,0.3)','rgba(0,0,0,0.3)')}">${text}</span>`;
+}
+function fadedColor(){return themeVal('rgba(255,255,255,0.2)','rgba(0,0,0,0.2)')}
+
+/* ══════════════════════════════════════
+   SECTION 1: BASICS
+══════════════════════════════════════ */
+function renderBasics(){
+  const svg=clearSvg('svg-basics');
+  const servers=SRV_BASE.map(s=>({...s,angle:SRV_ANGLES[s.n]}));
+  drawSectors(svg,servers);
+  drawBase(svg);
+  for(const s of servers) drawServer(svg,s);
+  for(const k of KEYS) drawKey(svg,k);
+}
+
+/* ══════════════════════════════════════
+   SECTION 2: LOOKUP
+══════════════════════════════════════ */
+let selectedKey=null;
+function renderLookup(){
+  const svg=clearSvg('svg-lookup');
+  const servers=SRV_BASE.map(s=>({...s,angle:SRV_ANGLES[s.n]}));
+  drawSectors(svg,servers);
+  drawBase(svg);
+  if(selectedKey){
+    const sv=assignServer(selectedKey.angle,servers);
+    drawLookupArc(svg,selectedKey.angle,sv.angle,'svg-lookup');
+  }
+  for(const s of servers) drawServer(svg,s);
+  for(const k of KEYS) drawKey(svg,k,{highlighted:selectedKey&&k.n===selectedKey.n,onClick:selectKey});
+
+  let html=`<tr><th>키</th><th>위치</th><th>담당 서버</th></tr>`;
+  for(const k of KEYS){
+    const sv=assignServer(k.angle,servers);
+    const hl=selectedKey&&selectedKey.n===k.n;
+    html+=`<tr class="${hl?'hl':''}" data-click="${k.n}" onclick="selectKey('${k.n}')">
+      <td style="color:${KEY_COL};font-weight:500">${k.n}</td>
+      <td>${k.angle}°</td>
+      <td style="color:${sv.col};font-weight:500">서버 ${sv.n}</td>
+    </tr>`;
+  }
+  document.getElementById('lookup-table').innerHTML=html;
+
+  const det=document.getElementById('lookup-detail');
+  if(selectedKey){
+    const sv=assignServer(selectedKey.angle,servers);
+    const muted=themeVal('rgba(255,255,255,0.3)','rgba(0,0,0,0.3)');
+    det.style.display='block';
+    det.innerHTML=`<span style="color:${KEY_COL}">${selectedKey.n}</span><span style="color:${muted}"> (${selectedKey.angle}°)</span> → 시계 방향 탐색 → <span style="color:${sv.col}">서버 ${sv.n}</span><span style="color:${muted}"> (${SRV_ANGLES[sv.n]}°)</span>`;
+  } else {
+    det.style.display='none';
+  }
+}
+function selectKey(n){
+  const k=KEYS.find(x=>x.n===n);
+  selectedKey=selectedKey&&selectedKey.n===n?null:k;
+  renderLookup();
+}
+
+/* ══════════════════════════════════════
+   SECTION 3: ADD / REMOVE
+══════════════════════════════════════ */
+let addActive=false,removeActive=false;
+function switchOp(op){
+  document.querySelectorAll('.tabs .tab').forEach((t,i)=>
+    t.classList.toggle('active',(op==='add'&&i===0)||(op==='remove'&&i===1)));
+  document.getElementById('panel-add').classList.toggle('active',op==='add');
+  document.getElementById('panel-remove').classList.toggle('active',op==='remove');
+}
+
+function renderAdd(){
+  const svg=clearSvg('svg-add');
+  const base=SRV_BASE.map(s=>({...s,angle:SRV_ANGLES[s.n]}));
+  const full=[...base,SRV_E];
+  const servers=addActive?full:base;
+  drawSectors(svg,servers);
+  drawBase(svg);
+  for(const s of servers) drawServer(svg,s);
+  if(addActive){
+    const p=axy(SRV_E.angle,R);
+    const glow=el('circle',{cx:p.x,cy:p.y,r:18,fill:'rgba(245,166,35,0.14)',stroke:'none'});
+    svg.insertBefore(glow,svg.lastChild);
+  }
+  for(const k of KEYS) drawKey(svg,k);
+
+  let movedCount=0;
+  let html=`<tr><th>키</th><th>이전</th><th>이후</th></tr>`;
+  for(const k of KEYS){
+    const before=assignServer(k.angle,base);
+    const after=assignServer(k.angle,full);
+    const moved=before.n!==after.n;
+    if(moved) movedCount++;
+    html+=`<tr class="${addActive&&moved?'moved':''}">
+      <td style="color:${KEY_COL}">${k.n}</td>
+      <td style="color:${before.col};font-weight:500">서버 ${before.n}</td>
+      <td style="color:${addActive?(moved?SRV_E.col:before.col):before.col};font-weight:500">${addActive?`→ 서버 ${after.n}`:'—'}</td>
+    </tr>`;
+  }
+  document.getElementById('add-table').innerHTML=html;
+  const sum=document.getElementById('add-summary');
+  sum.innerHTML=addActive
+    ?`<span class="badge badge-move">재배치</span> <strong>${movedCount}개</strong> 키만 이동 · <strong>${KEYS.length-movedCount}개</strong>는 변동 없음`
+    :`서버 E를 추가하면 <strong>일부 키만</strong> 이동합니다.`;
+  document.getElementById('btn-add').textContent=addActive?'← 원래대로':'서버 E 추가하기';
+}
+function toggleAdd(){addActive=!addActive;renderAdd();}
+
+function renderRemove(){
+  const svg=clearSvg('svg-remove');
+  const base=SRV_BASE.map(s=>({...s,angle:SRV_ANGLES[s.n]}));
+  const after=base.filter(s=>s.n!=='C');
+  drawSectors(svg,removeActive?after:base);
+  drawBase(svg);
+  for(const s of base) drawServer(svg,s,{faded:removeActive&&s.n==='C'});
+  for(const k of KEYS) drawKey(svg,k);
+
+  let movedCount=0;
+  let html=`<tr><th>키</th><th>이전</th><th>이후</th></tr>`;
+  const faded=fadedColor();
+  for(const k of KEYS){
+    const before=assignServer(k.angle,base);
+    const af=assignServer(k.angle,after);
+    const moved=before.n!==af.n;
+    if(moved) movedCount++;
+    html+=`<tr class="${removeActive&&moved?'moved':''}">
+      <td style="color:${KEY_COL}">${k.n}</td>
+      <td style="color:${removeActive&&moved?faded:before.col};font-weight:500;${removeActive&&moved?'text-decoration:line-through':''}">${before.n}</td>
+      <td style="color:${removeActive?af.col:faded};font-weight:500">${removeActive?`→ 서버 ${af.n}`:'—'}</td>
+    </tr>`;
+  }
+  document.getElementById('remove-table').innerHTML=html;
+  const sum=document.getElementById('remove-summary');
+  sum.innerHTML=removeActive
+    ?`<span class="badge badge-remove">영향</span> <strong>${movedCount}개</strong> 키만 다음 서버로 이전 · <strong>${KEYS.length-movedCount}개</strong>는 변동 없음`
+    :`서버 C 제거 시 해당 키만 <strong>D로 이전</strong>됩니다.`;
+  document.getElementById('btn-remove').textContent=removeActive?'← 원래대로':'서버 C 제거하기';
+}
+function toggleRemove(){removeActive=!removeActive;renderRemove();}
+
+/* ══════════════════════════════════════
+   SECTION 4: VIRTUAL NODES
+══════════════════════════════════════ */
+const VN_SRV=[
+  {n:'A',col:'#7c6bff',fill:'rgba(124,107,255,0.28)'},
+  {n:'B',col:'#1dbe8a',fill:'rgba(29,190,138,0.28)'},
+  {n:'C',col:'#ff6b52',fill:'rgba(255,107,82,0.28)'},
+];
+const KEYS_N=3600;
+
+function murmur32(str){
+  let h=0x9e3779b9;
+  for(let i=0;i<str.length;i++){
+    h^=str.charCodeAt(i)*0x5bd1e995;
+    h=(h<<13)|(h>>>19);
+    h=((h*0xbf58476d)^(h>>>31))>>>0;
+  }
+  return h>>>0;
+}
+function getVNodes(vn){
+  const nodes=[];
+  for(let si=0;si<VN_SRV.length;si++){
+    for(let vi=0;vi<vn;vi++){
+      const h=murmur32(`server-${VN_SRV[si].n}-vnode-${vi}`);
+      const angle=(h/0xFFFFFFFF)*360;
+      nodes.push({si,angle,real:vi===0,n:VN_SRV[si].n,col:VN_SRV[si].col,fill:VN_SRV[si].fill});
+    }
+  }
+  return nodes.sort((a,b)=>a.angle-b.angle);
+}
+function assignVn(angle,nodes){
+  for(const nd of nodes) if(nd.angle>=angle) return nd.si;
+  return nodes[0].si;
+}
+
+let currentVn=1;
+function renderVnode(vn){
+  currentVn=vn;
+  document.getElementById('vn-val').textContent=vn+'개';
+  document.getElementById('vn-total').textContent=(vn*3)+'';
+  const nodes=getVNodes(vn);
+  const svg=clearSvg('svg-vn');
+  const sorted=[...nodes].sort((a,b)=>a.angle-b.angle);
+
+  for(let i=0;i<sorted.length;i++){
+    const nd=sorted[i];
+    const prev=sorted[(i-1+sorted.length)%sorted.length];
+    let sa=prev.angle,ea=nd.angle;
+    if(ea<=sa)ea+=360;
+    const large=ea-sa>180?1:0;
+    const s=axy(sa,R),e=axy(ea,R);
+    const path=el('path',{
+      d:`M${CX},${CY}L${s.x},${s.y}A${R},${R} 0 ${large},1 ${e.x},${e.y}Z`,
+      fill:nd.fill,stroke:'none'
+    });
+    svg.appendChild(path);
+  }
+  drawBase(svg);
+
+  const srvStroke=themeVal('#0a0a0f','#f5f4f0');
+  for(const nd of sorted){
+    const p=axy(nd.angle,R);
+    const dr=nd.real?8:4;
+    const c=el('circle',{cx:p.x,cy:p.y,r:dr,fill:nd.col,stroke:srvStroke,'stroke-width':'1.5',opacity:nd.real?'1':'0.45'});
+    svg.appendChild(c);
+    if(nd.real){
+      const lp=axy(nd.angle,R+20);
+      const t=txt(`S${nd.n}`,{x:lp.x,y:lp.y+4,'text-anchor':'middle','font-size':'10','font-weight':'500',fill:nd.col,'font-family':'DM Mono,monospace'});
+      svg.appendChild(t);
+    }
+  }
+
+  const counts=[0,0,0];
+  for(let i=0;i<KEYS_N;i++) counts[assignVn((i/KEYS_N)*360,sorted)]++;
+  const pcts=counts.map(c=>Math.round(c/KEYS_N*100));
+  const mx=Math.max(...pcts),mn=Math.min(...pcts);
+  const mxi=pcts.indexOf(mx),mni=pcts.indexOf(mn);
+
+  document.getElementById('vn-max').textContent=mx+'%';
+  document.getElementById('vn-max-s').textContent='서버 '+VN_SRV[mxi].n;
+  document.getElementById('vn-min').textContent=mn+'%';
+  document.getElementById('vn-min-s').textContent='서버 '+VN_SRV[mni].n;
+  document.getElementById('vn-diff').textContent=(mx-mn)+'%p';
+
+  document.getElementById('vn-bars').innerHTML=VN_SRV.map((s,i)=>`
+    <div class="bar-row">
+      <div class="bar-name" style="color:${s.col}">S${s.n}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pcts[i]}%;background:${s.col}"></div></div>
+      <div class="bar-pct">${pcts[i]}%</div>
+    </div>`).join('');
+
+  const desc=document.getElementById('vn-desc');
+  if(vn===1) desc.innerHTML=`<strong>가상 노드 없음.</strong> 물리적 위치에 따라 담당 구간이 크게 달라져 편차가 큽니다. (편차 ${mx-mn}%p)`;
+  else if(vn<=5) desc.innerHTML=`서버당 <strong>${vn}개</strong> 가상 노드. 분포가 조금씩 고르게 됩니다. 편차: <strong>${mx-mn}%p</strong>`;
+  else if(vn<=15) desc.innerHTML=`서버당 <strong>${vn}개</strong> 가상 노드. 각 서버의 담당 구간이 분산되어 부하가 균등해집니다. 편차: <strong>${mx-mn}%p</strong>`;
+  else desc.innerHTML=`서버당 <strong>${vn}개</strong> 가상 노드. 링 전체에 잘게 분산되어 거의 균등한 분포에 수렴합니다. 편차: <strong>${mx-mn}%p</strong>`;
+}
+
+/* ── redraw all SVGs (called on theme change) ── */
+function redrawAll(){
+  renderBasics();
+  renderLookup();
+  renderAdd();
+  renderRemove();
+  renderVnode(currentVn);
+}
+
+/* ── INIT ── */
+redrawAll();
+document.getElementById('vn-slider').addEventListener('input',e=>renderVnode(+e.target.value));
+</script>
+</body>
+</html>
