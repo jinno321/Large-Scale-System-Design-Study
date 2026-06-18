@@ -42,7 +42,7 @@ https://claude.ai/public/artifacts/67113a5b-0db1-46ca-9fb3-7e73a019fa90
 
 #### 서버 제거
 
-!SCR-20260604-jndr.png
+<img width="506" height="262" alt="SCR-20260618-nnxu" src="https://github.com/user-attachments/assets/d324ecac-86b3-4e32-9ef9-74582b1259e"/>
 
 ---
 
@@ -60,11 +60,11 @@ https://claude.ai/public/artifacts/67113a5b-0db1-46ca-9fb3-7e73a019fa90
 
 **Cassandra, DynamoDB, Redis Cluster** 같은 시스템에서 실제로 사용합니다. 보통 서버당 100~200개의 가상 노드를 설정하며, 서버 스펙이 다를 때 고성능 서버에 가상 노드를 더 많이 할당해 부하를 의도적으로 더 몰아줄 수도 있습니다.
 
-!image.png
+<img width="501" height="266" alt="SCR-20260618-nnww" src="https://github.com/user-attachments/assets/a51bea61-567e-4504-a995-c9fa6564b744" />
 
-!image.png
+<img width="517" height="419" alt="SCR-20260618-noaj" src="https://github.com/user-attachments/assets/41b8b47e-7d6f-4c25-9555-a978302b0722" />
 
-!image.png
+<img width="511" height="415" alt="SCR-20260618-nobj" src="https://github.com/user-attachments/assets/47152ec0-8d65-4daa-ac10-1af9c12c758b" />
 
 > 서버 별 키 점유율의 편차가 점차 적어지는 것을 확인할 수 있음!
 > 
