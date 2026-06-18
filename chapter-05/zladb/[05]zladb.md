@@ -29,15 +29,16 @@ https://claude.ai/public/artifacts/67113a5b-0db1-46ca-9fb3-7e73a019fa90
 
 - 해시 공간의 양쪽을 구부려 접어서 링 형태로 만든 것!
 
-https://creative-zydeco-71d.notion.site/image/attachment%3A2b50a959-9685-4adf-97ef-47f46f6b3f80%3Aimage.png?table=block&id=3752b88d-8c78-8038-a06c-e04a9b560fef&spaceId=0d60a639-8c23-4927-ac86-f35c48b8a16b&width=1060&userId=&cache=v2&imgBuildSrc=requestProxiedImageUrl
+<img width="507" height="331" alt="SCR-20260618-nnus" src="https://github.com/user-attachments/assets/a547efe9-bcbe-4109-ba0a-5655869b3040" />
 
 #### 서버 조회
 
-!image.png
+<img width="500" height="240" alt="SCR-20260618-nnvy" src="https://github.com/user-attachments/assets/34a5400a-7ab6-4127-ad23-bc32a243af79" />
 
 #### 서버 추가
 
-!image.png
+<img width="501" height="266" alt="SCR-20260618-nnww" src="https://github.com/user-attachments/assets/a51bea61-567e-4504-a995-c9fa6564b744" />
+" />
 
 #### 서버 제거
 
